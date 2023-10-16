@@ -1,3 +1,4 @@
-from .webhook import GithubWebhook
+from .webhook import *
+from .events import *
 
 name = "decorators"

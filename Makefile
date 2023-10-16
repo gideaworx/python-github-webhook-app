@@ -1,28 +1,30 @@
 CMD_NOT_FOUND = $(error $(1) is required for this rule)
 CHECK_CMD = $(if $(shell command -v $(1)),,$(call CMD_NOT_FOUND,$(1)))
-REQUIREMENTS := jq curl python3
+REQUIREMENTS := python3 pip3
 $(foreach req,$(REQUIREMENTS),$(call CHECK_CMD,$(req)))
 
-schemas/api.github.com.json:
-	curl -o schemas/api.github.com.json \
-		"https://raw.githubusercontent.com/github/rest-api-description/v2.1.0/descriptions/api.github.com/api.github.com.json"
+GITHUB_API_VERSION := v2.1.0
 
-schemas/webhooks.json: schemas/api.github.com.json
-	jq '.["x-webhooks"]' < schemas/api.github.com.json > schemas/webhooks.json
+.PHONY: generate-models clean
+clean:
+	rm -fr github_webhook_app/models/generated/*
 
-schemas/components.json: schemas/api.github.com.json
-	jq '.components.schemas' < schemas/api.github.com.json > schemas/components.json
+generate-models: github_webhook_app/models/generated/__init__.py
 
-.PHONY: update-schemas
-update-schemas: schemas/webhooks.json schemas/components.json
+github_webhook_app/models/generated/__init__.py: .venv/bin/activate .venv/bin/datamodel-codegen
+	. .venv/bin/activate
+	.venv/bin/datamodel-codegen \
+		--url "https://raw.githubusercontent.com/github/rest-api-description/$(GITHUB_API_VERSION)/descriptions/api.github.com/api.github.com.json" \
+		--output github_webhook_app/models/generated/__init__.py --target-python-version 3.11 \
+		--use-annotated --use-generic-container-types --use-union-operator \
+		--use-unique-items-as-set --use-field-description --use-schema-description \
+		--use-double-quotes --collapse-root-models
 
-.PHONY: generate generate-models generate-decorators
+.venv/bin/activate:
+	python3 -m venv .venv
 
-generate: generate-models generate-decorators
+.venv/bin/poetry:
+	pip3 install poetry
 
-generate-models: schemas/webhooks.json schemas/components.json
-	$(shell ./bin/generate-models.py)
-
-generate-decorators: schemas/webhooks.json schemas/components.json
-	$(shell ./bin/generate-decorators.py)
-
+.venv/bin/datamodel-codegen: .venv/bin/poetry
+	.venv/bin/poetry install

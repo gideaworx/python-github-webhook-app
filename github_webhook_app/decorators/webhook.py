@@ -1,10 +1,11 @@
 import inspect
+from typing import Callable, Dict
 
-def GaithubWebhook(cls):
-  cls.__is_github_webhook_cls = True
-  return cls
 
-class GithubWebhook:
+class github_webhook:
+  __is_github_webhook_cls: bool = False
+  __handlers: Dict[str, Callable] = dict()
+
   def __init__(self):
     pass
 

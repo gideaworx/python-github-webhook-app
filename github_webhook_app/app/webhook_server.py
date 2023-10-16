@@ -4,7 +4,7 @@ import sys
 from fastapi import FastAPI, APIRouter, HTTPException, status
 from fastapi.responses import PlainTextResponse
 from fastapi_class import View
-from github_webhook_app.decorators import GithubWebhook
+from github_webhook_app.decorators import github_webhook
 
 NOT_AUTHORIZED = HTTPException(401, "Not authorized.")
 NOT_ALLOWED = HTTPException(405, "Method not allowed.")
@@ -31,7 +31,7 @@ class GithubWebhookApp:
     self.app = FastAPI()
     
     if webhook_cls is None:
-      webhooks = inspect.getmembers(sys.modules[__name__], GithubWebhook.is_webhook)
+      webhooks = inspect.getmembers(sys.modules[__name__], github_webhook.is_webhook)
       if len(webhooks) == 1:
         webhook_cls = webhooks[0][1]
       else:
