@@ -1,16 +1,13 @@
-from typing import Any, Callable, Dict, NamedTuple, Type
+from typing import Any, Callable, Dict, Type
 
-from fastapi import FastAPI, HTTPException, Request, status
+import uvicorn
+from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 
 from github_webhook_app.decorators import github_webhook
-from uvicorn import run
 
-NOT_AUTHORIZED = HTTPException(401, "Not authorized.")
-NOT_ALLOWED = HTTPException(405, "Method not allowed.")
-NOT_FOUND  = lambda item_id="item_id": HTTPException(404, f"Item with {item_id} not found.")
 
-def webhook_app_server(annotated_webhook_cls: Type[Any], /, port: int = 3000, autostart: bool = True) -> Callable | None:
+def webhook_app_server(annotated_webhook_cls: Type[Any], /, port: int = 3000) -> None:
   if not github_webhook.is_webhook(annotated_webhook_cls):
     raise TypeError(f"{repr(annotated_webhook_cls)} must be a class decorated with @github_webhook")
 
@@ -41,11 +38,6 @@ def webhook_app_server(annotated_webhook_cls: Type[Any], /, port: int = 3000, au
     
     handler.method(handler.inst, headers=event_headers, request=json)
 
-    def start():
-      run(app=app, host="0.0.0.0", port=port)
-    
-    if autostart:
-      start()
-      return None
-    
-    return start
+    cfg = uvicorn.Config(app=app, host="0.0.0.0", port=port)
+    uvicorn.run(cfg)
+      
