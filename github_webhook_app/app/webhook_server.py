@@ -1,21 +1,16 @@
-import inspect
-import sys
+from typing import Any, Callable, Dict, NamedTuple, Type
 
-from fastapi import FastAPI, HTTPException, status, Request
-from fastapi.responses import PlainTextResponse, JSONResponse
-from fastapi_class import View
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
+
 from github_webhook_app.decorators import github_webhook
-from typing import Type, Any, NamedTuple, Callable, Dict
+from uvicorn import run
 
 NOT_AUTHORIZED = HTTPException(401, "Not authorized.")
 NOT_ALLOWED = HTTPException(405, "Method not allowed.")
 NOT_FOUND  = lambda item_id="item_id": HTTPException(404, f"Item with {item_id} not found.")
 
-class ServerControls(NamedTuple):
-  start: Callable | None
-  stop: Callable | None
-
-def webhook_app_server(annotated_webhook_cls: Type[Any], /, port: int = 3000, autostart: bool = True):
+def webhook_app_server(annotated_webhook_cls: Type[Any], /, port: int = 3000, autostart: bool = True) -> Callable | None:
   if not github_webhook.is_webhook(annotated_webhook_cls):
     raise TypeError(f"{repr(annotated_webhook_cls)} must be a class decorated with @github_webhook")
 
@@ -46,33 +41,11 @@ def webhook_app_server(annotated_webhook_cls: Type[Any], /, port: int = 3000, au
     
     handler.method(handler.inst, headers=event_headers, request=json)
 
-app = FastAPI()
-
-@View(app, path="/event")
-class EventHandler:
-  exceptions = {
-    "__all__": [NOT_FOUND],
-    "post": [NOT_ALLOWED, NOT_FOUND]
-  }
-
-  RESPONSE_CLASS = {
-    "post": PlainTextResponse
-  }
-
-  def post(self):
-    pass
-
-class GithubWebhookApp:
-  def __init__(self, webhook_cls = None) -> None:
-    self.app = FastAPI()
+    def start():
+      run(app=app, host="0.0.0.0", port=port)
     
-    if webhook_cls is None:
-      webhooks = inspect.getmembers(sys.modules[__name__], github_webhook.is_webhook)
-      if len(webhooks) == 1:
-        webhook_cls = webhooks[0][1]
-      else:
-        raise f"If webhook_cls is not passed, there must be exactly one defined webhook in the loaded modules, but I found {len(webhooks)}"
+    if autostart:
+      start()
+      return None
     
-    self.__webhook = webhook_cls
-    if inspect.isclass(webhook_cls):
-      self.__webhook = webhook_cls()
+    return start
