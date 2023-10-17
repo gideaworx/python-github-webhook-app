@@ -14,6 +14,6 @@ setup(
 
     license='MIT',
 
-    packages=['github_webhook_app.app', 'github_webhook_app.decorators', 'github_webhook_app.models'],
+    packages=['github_webhook_app'],
     zip_safe=False,
 )

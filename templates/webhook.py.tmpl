@@ -1,0 +1,6 @@
+import github_webhook_app.models
+from .abc_service import ABCWebhookService
+
+class WebhookService(ABCWebhookService):
+  def __init__(self):
+    ABCWebhookService.__init__(self)

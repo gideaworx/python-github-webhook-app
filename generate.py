@@ -3,9 +3,12 @@ import signal
 from enum import IntEnum
 from os.path import dirname
 from pathlib import Path
-from sys import exit, stdin
-from typing import Any, Dict, List, Set
+from sys import exit, stdin, argv
+from typing import Any, Callable, Dict, List, Set
 from datetime import datetime
+from datamodel_code_generator import generate, InputFileType
+from datamodel_code_generator.format import PythonVersion
+import traceback
 
 class Exit(IntEnum):
     """Exit reasons."""
@@ -34,10 +37,8 @@ class WebhookEventDecorator:
 
   def __str__(self) -> str:
     return f"""
-class handle_{to_snake_case(self.name)}(abstract_webhook_handler):
-  def __init__(self, func):
-    super(self, func)
-    self._set_targets("{self.name}", {str(self.headers).replace("'", '"')}, github_webhook_app.models.{self.model})
+  def handle_{to_snake_case(self.name)}(self, func):
+    return self._wrap(func, event_name="{self.name}", request_body=github_webhook_app.models.{self.model})
 """
 
 def sig_int_handler(_: int, __: Any) -> None:  # pragma: no cover
@@ -48,6 +49,9 @@ def to_camel_case(kebab_str: str) -> str:
 
 def to_snake_case(kebab_str: str) -> str:
   return kebab_str.replace("-", "_")
+
+def file(subpath: str) -> Path:
+  return Path(dirname(__file__), subpath)
 
 def __generate_decorator(name: str, definition: Dict[str, Any]) -> WebhookEventDecorator | None:
   headers: Set[str] = set()
@@ -83,34 +87,82 @@ def __generate_decorator(name: str, definition: Dict[str, Any]) -> WebhookEventD
   
   return None
 
-def main() -> Exit:
-  signal.signal(signal.SIGINT, sig_int_handler)
-
+def generate_decorators() -> Exit:
   handlers: Set[WebhookEventDecorator] = set()
+  handler_names: Set[str] = set()
   try:
-    webhook_dict = json.load(stdin)
+    webhook_dict = json.loads(stdin.read())["x-webhooks"]
     for name, defn in webhook_dict.items():
       decorator_definition = __generate_decorator(name, defn)
       if decorator_definition is not None:
         handlers.add(decorator_definition)
+        handler_names.add(f"handle_{to_snake_case(name)}")
   except Exception as e:
     raise e
   
-  with open(Path(dirname(__file__), "__generated.py"), "wt+") as fp:
-    fp.write(f"""
+  comment = f"""
 # Webhook event decorators
-# DO NOT EDIT
-# Generated on {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")}Z
+#   DO NOT EDIT
+#   Generated on {datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")}Z
 
-import github_webhook_app.models
-from .abstract_handler import abstract_webhook_handler
+"""
+  
+  class_base = ""
+  with open(file("templates/webhook.py.tmpl"), "r") as template:
+    class_base = template.read()
 
-              """)
+  with open(file("github_webhook_app/__init__.py"), "wt+") as initpy:
+    lines = [comment, class_base]
+    sorted_handlers = sorted(handlers, key=lambda x: x.name)
+    for h in sorted_handlers:
+      lines.append(str(h))
     
-    for h in handlers:
-      fp.write(str(h))
+    lines.append('\nname = "github_webhook_app"\n')
+    initpy.writelines(lines)
 
   return Exit.OK
 
+def generate_models() -> Exit:
+  input = stdin.read()
+  generate(input,
+           input_file_type=InputFileType.OpenAPI,
+           output=file("github_webhook_app/models/__init__.py"),
+           target_python_version=PythonVersion.PY_311,
+           use_annotated=True, field_constraints=True, use_generic_container_types=True,
+           use_double_quotes=True, use_union_operator=True,
+           use_unique_items_as_set=True, use_field_description=True,
+           use_schema_description=True, collapse_root_models=True)
+  
+  return Exit.OK
+
+def usage(force: bool = False):
+  if force or len(argv) != 2:
+    print(f"{argv[0]} models | decorators")
+    exit(255)
+
+def main() -> Exit:
+  signal.signal(signal.SIGINT, sig_int_handler)
+
+  usage()
+  gtype = argv[1]
+
+  f: Callable | None = None
+  if gtype == "models":
+    f = generate_models
+  elif gtype == "decorators":
+    f = generate_decorators
+  
+  if f is None:
+    usage(True)
+
+  try:
+    return f()
+  except KeyboardInterrupt:
+    return Exit.KeyboardInterrupt
+  except Exception:
+    print(traceback.format_exc())
+    return Exit.ERROR
+  
+
 if __name__ == "__main__":
-  main()
+  exit(main())
