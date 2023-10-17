@@ -39,7 +39,7 @@ class ABCWebhookService(metaclass=ABCMeta):
 
       if "X-Github-Event" not in request.headers:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": "Not Found"})
-      event = request.headers["X-Github-Event"]
+      event = request.headers["X-Github-Event"].replace("_", "-")
       
       if "action" not in json:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": "Not Found"})
