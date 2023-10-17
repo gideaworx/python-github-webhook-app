@@ -1,4 +1,5 @@
 from .abstract_handler import *
+from .__generated import *
 
 class EventHandler(NamedTuple):
   event: str

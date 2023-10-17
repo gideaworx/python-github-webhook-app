@@ -1,24 +1,6 @@
 import inspect
-from typing import Callable, Dict
-from abc import ABCMeta
+from typing import Dict
 from .events import EventHandler
-
-class decorated_class(metaclass=ABCMeta):
-  _is_github_webhook_cls = True
-  _handlers: Dict[str, EventHandler] = dict()
-
-  def __init__(self):
-    pass
-
-  @property.getter
-  def handler(self, name: str) -> EventHandler:
-    if name in self._handlers:
-      return self._handlers[name]
-    raise KeyError(name)
-
-  @property.setter
-  def handler(self, name: str, handler: EventHandler) -> None:
-    self._handlers[name] = handler
 
 class github_webhook:
   def __init__(self, cls):
