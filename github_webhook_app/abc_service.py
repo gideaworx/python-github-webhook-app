@@ -56,7 +56,7 @@ class ABCWebhookService(metaclass=ABCMeta):
         if header_name in request.headers:
           event_headers[header_name] = request.headers[header_name]
       
-      return handler.method(headers=event_headers, request=handler.bodyType(**json))
+      return handler.method(self._target, headers=event_headers, request=handler.bodyType(**json))
 
   def webhook(self, cls):
     if cls is None:
@@ -65,8 +65,10 @@ class ABCWebhookService(metaclass=ABCMeta):
     resolved = None
     if inspect.isclass(cls):
       resolved = cls
+      self._target = cls()
     elif hasattr(cls, "__class__"):
       resolved = cls.__class__
+      self._target = cls
 
     resolved._is_github_webhook_cls = True
     self._target = cls
