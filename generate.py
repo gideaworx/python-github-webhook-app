@@ -131,7 +131,8 @@ def generate_models() -> Exit:
            use_annotated=True, field_constraints=True, use_generic_container_types=True,
            use_double_quotes=True, use_union_operator=True,
            use_unique_items_as_set=True, use_field_description=True,
-           use_schema_description=True, collapse_root_models=True)
+           use_schema_description=True, collapse_root_models=True,
+           force_optional_for_required_fields=True)
   
   return Exit.OK
 
