@@ -46,6 +46,9 @@ class ABCWebhookService(metaclass=ABCMeta):
       action = json["action"]
 
       handler_type = f"{event}-{action}".replace("_", "-")
+      if handler_type not in self._handlers:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"message": "Not Found"})
+      
       handler = self._handlers[handler_type]
 
       if handler is None:
