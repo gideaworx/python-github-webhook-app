@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "github_webhook_app"
-version = "1.0.5"
+version = "1.1.0"
 description = "Decorate your way to an app capable of responding to Github Webhook Events"
 authors = ["Josh Ghiloni <ghiloni@gmail.com>"]
 readme = "README.md"

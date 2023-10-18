@@ -32,6 +32,9 @@ class ABCWebhookService(metaclass=ABCMeta):
     self._app = app
     self._handlers: Dict[str, EventHandler] = dict()
 
+    @app.get("/healthz")
+    async def healthz():
+      return "OK"
 
     @app.post("/event")
     async def handleEvent(request: Request) -> Any:
