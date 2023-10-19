@@ -76,9 +76,7 @@ class ABCWebhookService(metaclass=ABCMeta):
       resolved = cls.__class__
       self._target = cls
 
-    resolved._is_github_webhook_cls = True
-    self._target = cls
-  
+    resolved._is_github_webhook_cls = True  
 
   def _wrap(self, func, /, event_name: str, request_body: T) -> Callable:
     self._handlers[event_name] = EventHandler(event=event_name, bodyType=request_body, method=func)
